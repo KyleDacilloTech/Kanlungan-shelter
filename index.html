@@ -50,6 +50,11 @@
 
   <section class="controls">
     <div class="field">
+      <label for="shelter-search">Search shelters</label>
+      <input type="search" id="shelter-search" placeholder="Name or area" autocomplete="off">
+    </div>
+
+    <div class="field">
       <label for="area">Your barangay</label>
       <select id="area" name="area">
         <option>Poblacion</option>
@@ -78,6 +83,8 @@
 
 <main>
   <h2 class="list-heading">Shelters near you</h2>
+  <p id="empty-state" class="empty-state" hidden>No shelters match your search and filter right now. Try a different disaster type or clear the search box.</p>
+
   <section id="shelter-list" class="shelter-list" aria-label="Shelter results">
 
     <article class="card flood status-warn" data-id="poblacion-covered-court" data-home="Poblacion" data-offset="0.3" data-capacity="250" data-count="184" data-default="184">
@@ -237,4 +244,6 @@
 
 <script src="script.js"></script>
 </body>
-</html>
+  </html>
+
+  
