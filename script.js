@@ -1,24 +1,33 @@
 (function () {
   'use strict';
 
-  var DIST = {
-    'Poblacion':  { 'Poblacion': 0,   'San Isidro': 1.2, 'Sto. Niño': 2.0, 'Malinis': 2.8, 'Riverside': 1.0, 'Calvario': 2.4 },
-    'San Isidro': { 'Poblacion': 1.2, 'San Isidro': 0,   'Sto. Niño': 1.6, 'Malinis': 2.2, 'Riverside': 1.8, 'Calvario': 3.0 },
-    'Sto. Niño':  { 'Poblacion': 2.0, 'San Isidro': 1.6, 'Sto. Niño': 0,   'Malinis': 1.4, 'Riverside': 2.6, 'Calvario': 1.1 },
-    'Malinis':    { 'Poblacion': 2.8, 'San Isidro': 2.2, 'Sto. Niño': 1.4, 'Malinis': 0,   'Riverside': 3.2, 'Calvario': 1.8 },
-    'Riverside':  { 'Poblacion': 1.0, 'San Isidro': 1.8, 'Sto. Niño': 2.6, 'Malinis': 3.2, 'Riverside': 0,   'Calvario': 3.0 },
-    'Calvario':   { 'Poblacion': 2.4, 'San Isidro': 3.0, 'Sto. Niño': 1.1, 'Malinis': 1.8, 'Riverside': 3.0, 'Calvario': 0   }
+  // Real Marikina City barangays, grouped into four rough geographic zones (river-hugging
+  // District 1 core, the hillier District 1 west end, District 2's north, and District 2's
+  // elevated east). Distance is zone-to-zone plus a small per-shelter offset, not real GPS.
+  var BARANGAY_ZONE = {
+    'Sto. Niño': 'core', 'Sta. Elena': 'core', 'Malanday': 'core',
+    'San Roque': 'core', 'Tañong': 'core', 'Calumpang': 'core',
+    'Barangka': 'west', 'Industrial Valley Complex': 'west', 'Jesus de la Peña': 'west',
+    'Nangka': 'north', 'Tumana': 'north', 'Concepcion Uno': 'north',
+    'Concepcion Dos': 'north', 'Parang': 'north',
+    'Marikina Heights': 'heights', 'Fortune': 'heights'
+  };
+  var ZONE_DIST = {
+    core:    { core: 0,   west: 2.0, north: 2.5, heights: 3.5 },
+    west:    { core: 2.0, west: 0,   north: 3.0, heights: 4.0 },
+    north:   { core: 2.5, west: 3.0, north: 0,   heights: 2.0 },
+    heights: { core: 3.5, west: 4.0, north: 2.0, heights: 0   }
   };
 
   var STALE_THRESHOLD_MIN = 30;
   var FADE_MS = 160; // matches --duration-fast in style.css
   var initialAgeMinutes = {
-    'poblacion-covered-court': 12,
-    'san-isidro-elementary': 40,
+    'malanday-covered-court': 12,
+    'sta-elena-elementary': 40,
     'sto-nino-parish-hall': 5,
-    'malinis-multipurpose-hall': 60,
-    'riverside-nhs-gym': 25,
-    'calvario-chapel-grounds': 120
+    'barangka-multipurpose-hall': 60,
+    'marikina-heights-nhs-gym': 25,
+    'concepcion-uno-chapel-grounds': 120
   };
 
   var areaSelect = document.getElementById('area');
@@ -111,10 +120,12 @@
 
   function updateDistancesAndSort() {
     var area = areaSelect.value;
+    var selectedZone = BARANGAY_ZONE[area] || 'core';
     cards.forEach(function (card) {
       var home = card.dataset.home;
+      var homeZone = BARANGAY_ZONE[home] || 'core';
       var offset = parseFloat(card.dataset.offset) || 0;
-      var base = (DIST[area] && DIST[area][home] !== undefined) ? DIST[area][home] : 0;
+      var base = (ZONE_DIST[selectedZone] && ZONE_DIST[selectedZone][homeZone] !== undefined) ? ZONE_DIST[selectedZone][homeZone] : 0;
       var km = base + offset;
       var distEl = card.querySelector('.distance');
       if (distEl) distEl.textContent = 'About ' + km.toFixed(1) + ' km from your area';
@@ -264,5 +275,5 @@ if ('serviceWorker' in navigator) {
       /* offline caching unavailable here (e.g. opened as a local file); the app still works online */
     });
   });
-        }
-                                         
+}
+
