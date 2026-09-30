@@ -1,1 +1,7 @@
-
+const C='kanlungan-v6',T='kanlungan-tiles3',F=['./','index.html','style.css','script.js','manifest.json','icon.svg','images/placeholder.svg'],LF=['https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js','https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css','https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.min.js','https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.min.css','https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.0.20/leaflet-maplibre-gl.js','https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js'];
+self.addEventListener('install',e=>{e.waitUntil(Promise.all([caches.open(C).then(c=>c.addAll(F)),caches.open(T).then(c=>Promise.all(LF.map(u=>c.add(u).catch(()=>{}))))]));self.skipWaiting()});
+self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==C&&x!==T).map(x=>caches.delete(x)))));self.clients.claim()});
+self.addEventListener('fetch',e=>{const r=e.request;if(r.method!=='GET')return;const u=new URL(r.url);
+if(['tiles.openfreemap.org','cdnjs.cloudflare.com','unpkg.com'].includes(u.hostname)){e.respondWith(caches.open(T).then(async c=>{const m=await c.match(r),n=fetch(r).then(x=>{if(x.status===200||x.type==='opaque'){c.put(r,x.clone());c.keys().then(k=>{if(k.length>500)c.delete(k[0])})}return x}).catch(()=>m);return m||n}));return}
+if(u.origin===location.origin&&u.pathname.includes('/images/')){e.respondWith(fetch(r).then(x=>{if(x.ok)caches.open(C).then(c=>c.put(r,x.clone()));return x}).catch(()=>caches.match(r).then(x=>x||caches.match('images/placeholder.svg'))));return}
+e.respondWith(caches.match(r).then(x=>x||fetch(r).catch(()=>caches.match('index.html'))))});
