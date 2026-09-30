@@ -1,1 +1,11 @@
-
+{
+  "name": "Kanlungan: Shelter Finder",
+  "short_name": "Kanlungan",
+  "description": "Prototype shelter finder and relief tracker. Fictional data.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0d1424",
+  "theme_color": "#0d1424",
+  "icons": [{"src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"}]
+}
