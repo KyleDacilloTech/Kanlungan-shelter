@@ -11,6 +11,7 @@
   };
 
   var STALE_THRESHOLD_MIN = 30;
+  var FADE_MS = 160; // matches --duration-fast in style.css
   var initialAgeMinutes = {
     'poblacion-covered-court': 12,
     'san-isidro-elementary': 40,
@@ -23,6 +24,35 @@
   var areaSelect = document.getElementById('area');
   var list = document.getElementById('shelter-list');
   var cards = Array.prototype.slice.call(list.querySelectorAll('.card'));
+
+  function reduceMotion() {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+
+  // FLIP: measure, mutate, then invert-and-release so any card that changed position
+  // (a reorder, or others reflowing into a gap) slides there instead of jumping.
+  function withFlip(mutate) {
+    if (reduceMotion()) { mutate(); return; }
+    var firstRects = new Map();
+    cards.forEach(function (c) {
+      if (c.style.display !== 'none') firstRects.set(c, c.getBoundingClientRect());
+    });
+    mutate();
+    cards.forEach(function (c) {
+      if (c.style.display === 'none') return;
+      var first = firstRects.get(c);
+      if (!first) return;
+      var last = c.getBoundingClientRect();
+      var dx = first.left - last.left;
+      var dy = first.top - last.top;
+      if (Math.round(dx) === 0 && Math.round(dy) === 0) return;
+      c.style.transition = 'none';
+      c.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
+      c.getBoundingClientRect(); // force reflow so the jump above applies before we release it
+      c.style.transition = '';
+      requestAnimationFrame(function () { c.style.transform = ''; });
+    });
+  }
 
   function statusFor(pct) {
     if (pct > 95) return { cardCls: 'status-full', badgeCls: 'badge-full', text: 'Full' };
@@ -45,7 +75,7 @@
       var textEl = card.querySelector('.updated-text');
       var flagEl = card.querySelector('.stale-flag');
       if (textEl) textEl.textContent = 'Last synced ' + formatAgo(minutesAgo);
-      if (flagEl) flagEl.hidden = minutesAgo <= STALE_THRESHOLD_MIN;
+      if (flagEl) flagEl.classList.toggle('is-visible', minutesAgo > STALE_THRESHOLD_MIN);
     });
   }
 
@@ -63,11 +93,16 @@
     badge.className = 'badge ' + s.badgeCls;
     badge.textContent = s.text;
 
-    card.querySelector('.bar-fill').style.width = pct + '%';
+    card.querySelector('.bar-fill').style.transform = 'scaleX(' + (pct / 100) + ')';
     card.querySelector('.occupancy-text').textContent = count + ' of ' + cap + ' spaces filled (' + pct + '%)';
 
     var countDisplay = card.querySelector('.count-display');
     if (countDisplay) countDisplay.textContent = count;
+
+    var downBtn = card.querySelector('.step-down');
+    var upBtn = card.querySelector('.step-up');
+    if (downBtn) downBtn.disabled = count <= 0;
+    if (upBtn) upBtn.disabled = count >= cap;
 
     try {
       localStorage.setItem('kanlungan-count-' + card.dataset.id, String(count));
@@ -85,8 +120,72 @@
       if (distEl) distEl.textContent = 'About ' + km.toFixed(1) + ' km from your area';
       card.dataset.km = km;
     });
-    cards.sort(function (a, b) { return parseFloat(a.dataset.km) - parseFloat(b.dataset.km); });
-    cards.forEach(function (card) { list.appendChild(card); });
+    withFlip(function () {
+      cards.sort(function (a, b) { return parseFloat(a.dataset.km) - parseFloat(b.dataset.km); });
+      cards.forEach(function (card) { list.appendChild(card); });
+    });
+  }
+
+  var searchInput = document.getElementById('shelter-search');
+  var emptyState = document.getElementById('empty-state');
+
+  function currentHazard() {
+    var checked = document.querySelector('.filter input[name="hazard"]:checked');
+    if (!checked || checked.id === 'h-all') return 'all';
+    return checked.id.replace('h-', '');
+  }
+
+  function cardMatches(card) {
+    var hazard = currentHazard();
+    if (hazard !== 'all' && !card.classList.contains(hazard)) return false;
+    var query = searchInput ? searchInput.value.trim().toLowerCase() : '';
+    if (!query) return true;
+    var name = card.querySelector('h3').textContent.toLowerCase();
+    var area = card.querySelector('.area').textContent.toLowerCase();
+    return name.indexOf(query) !== -1 || area.indexOf(query) !== -1;
+  }
+
+  // Filtering runs in script.js instead of the old CSS-only :has() rule, so the
+  // leaving cards can fade out before the remaining ones FLIP into the freed space.
+  function applyFilters() {
+    if (reduceMotion()) {
+      cards.forEach(function (c) { c.style.display = cardMatches(c) ? '' : 'none'; });
+      updateEmptyState();
+      return;
+    }
+
+    cards.forEach(function (c) { if (!cardMatches(c)) c.classList.add('card-hidden'); });
+
+    window.setTimeout(function () {
+      withFlip(function () {
+        cards.forEach(function (c) {
+          c.classList.remove('card-hidden');
+          c.style.display = cardMatches(c) ? '' : 'none';
+        });
+      });
+      updateEmptyState();
+    }, FADE_MS);
+  }
+
+  function updateEmptyState() {
+    if (!emptyState) return;
+    var anyVisible = cards.some(function (c) { return c.style.display !== 'none'; });
+    emptyState.hidden = anyVisible;
+  }
+
+  var hazardRadios = Array.prototype.slice.call(document.querySelectorAll('.filter input[name="hazard"]'));
+  hazardRadios.forEach(function (radio) {
+    radio.addEventListener('change', function () {
+      if (radio.checked) applyFilters();
+    });
+  });
+
+  if (searchInput) {
+    var searchDebounce;
+    searchInput.addEventListener('input', function () {
+      window.clearTimeout(searchDebounce);
+      searchDebounce = window.setTimeout(applyFilters, 200);
+    });
   }
 
   cards.forEach(function (card) {
@@ -165,4 +264,5 @@ if ('serviceWorker' in navigator) {
       /* offline caching unavailable here (e.g. opened as a local file); the app still works online */
     });
   });
-}
+        }
+                                         
